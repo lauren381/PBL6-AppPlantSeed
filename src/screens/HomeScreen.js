@@ -1,21 +1,68 @@
 import { StyleSheet, Text, View,ScrollView, FlatList,StatusBar ,TouchableOpacity,Image,TextInput} from 'react-native'
-import React,{useState} from 'react'
+import React,{useState, useEffect} from 'react'
 import { Colors,Images,Fonts ,plants} from '../contants'
 import { Separator,Card } from '../components'
 import Feather from 'react-native-vector-icons/Feather'
 import Ionicons from 'react-native-vector-icons/Ionicons'
-
+import { category, getCurrentUser, getplants } from '../api/user_api';
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const HomeScreen = ({navigation}) => {
     const [catergoryIndex, setCategoryIndex] = React.useState(0);
+    const [data,setData] = useState([]);
+    const [plant,setPlants] = useState([]);
+    const [token,setToken] = useState('');
 
-    const categories = ['POPULAR', 'ORGANIC', 'INDOORS', 'SYNTHETIC'];
+    useEffect(()=> {
+        category()
+        .then(res =>{
+            //lay category
+            setData(res.data);
+        })
+        .catch(err=>{
+            console.error(err);
+        });
 
+        getplants()
+        .then(res=> {
+            //lay danh sach product
+            setPlants(res.data);
+        })
+        .catch(err=>{
+            console.error(err);
+        });
+
+    },[]);
+
+    useEffect(()=>{
+        if(token == ''){
+            getToken();
+        }
+        else{
+            getCurrentUser(token)
+            .then(async (res) =>{
+                //luu userId
+                await AsyncStorage.setItem('userID',res.data.id)
+            })
+            .catch(err =>{
+                console.error(err);
+            })
+        }
+    },[token]);
+
+    //lay token
+    const getToken = async () =>{
+        const value = await AsyncStorage.getItem('AccessToken');
+        if (value !== null) {
+            // We have data!!
+            setToken(value);
+        }
+    };
   return (
     <View style = {styles.container}>
         <StatusBar barStyle='light-content' 
             backgroundColor={Colors.THIRD_LIGHT_GREEN} translucent/>
-        <Separator height={40}/>
+        <Separator height={20}/>
         <View style= {styles.header}>
             <View style= {styles.titleContain}>
                 <Image source={Images.Logo_home} style= {styles.Image}/>
@@ -26,14 +73,13 @@ const HomeScreen = ({navigation}) => {
                 <View style = {styles.SearchContain}>
                     <Ionicons name='search' size={30} color= {Colors.THIRD_GREEN}/>
                     <TextInput 
-                        placeholder='Search' 
+                        placeholder='Tìm kiếm ' 
                         placeholderTextColor={Colors.THIRD_GREEN}
-                        alignItems = 'center'
                         style= {styles.SearchTextInput}/>
                 </View>
             </View>
             <View style={styles.categoryContainer}>
-                {categories.map((item, index) => (
+                {data?.map((item, index) => (
                     <TouchableOpacity
                         key={index}
                         activeOpacity={0.8}
@@ -43,7 +89,7 @@ const HomeScreen = ({navigation}) => {
                             styles.categoryText,
                             catergoryIndex === index && styles.categoryTextSelected,
                         ]}>
-                        {item}
+                        {item.name.toUpperCase()}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -54,7 +100,7 @@ const HomeScreen = ({navigation}) => {
                 columnWrapperStyle={{justifyContent: 'space-between'}}
                 showsVerticalScrollIndicator={true}
                 numColumns={2}
-                data={plants}
+                data={plant}
                 renderItem={({item}) => {
                   return <Card plant={item} navigation = {navigation} />;
                 }}
@@ -131,6 +177,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontFamily: Fonts.POPPINS_LIGHT,
         color: Colors.THIRD_GREEN,
+        alignItems: 'center'
     },
     categoryContainer: {
         flexDirection: 'row',
@@ -139,6 +186,7 @@ const styles = StyleSheet.create({
         marginLeft: 15,
         marginRight: 15,
         justifyContent: 'space-between',
+        paddingHorizontal: 5
     },
     categoryText: {
         fontSize: 18, 
